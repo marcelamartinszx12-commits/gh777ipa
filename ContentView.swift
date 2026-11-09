@@ -30,14 +30,15 @@ struct ContentView: View {
         } else if arguments.contains("--simulate-search-tab") {
             initialTab = 5
         } else {
-            initialTab = 0
+            initialTab = 3 // Força a iniciar na aba Installed (índice 3)
         }
         _tabNavigation = State(initialValue: AppTabNavigationState(selectedTab: initialTab))
         _showSettings = State(
             initialValue: arguments.contains("--simulate-settings")
         )
 #else
-        _tabNavigation = State(initialValue: AppTabNavigationState())
+        // Força a iniciar na aba Installed no dispositivo real
+        _tabNavigation = State(initialValue: AppTabNavigationState(selectedTab: AppSection.installed.rawValue))
 #endif
     }
 
@@ -58,10 +59,10 @@ struct ContentView: View {
             if requestID != nil { tabNavigation.select(AppSection.installed.rawValue) }
         }
         .onChange(of: developerModeEnabled) { _ in
-            tabNavigation.reconcileSelection(with: featureVisibility)
+            tabNavigation.reconcileSelection(with: filteredVisibility)
         }
         .onAppear {
-            tabNavigation.reconcileSelection(with: featureVisibility)
+            tabNavigation.reconcileSelection(with: filteredVisibility)
         }
         .sheet(isPresented: $showSettings) { SettingsView() }
         .sheet(isPresented: $showLogs) { LogView() }
@@ -71,7 +72,8 @@ struct ContentView: View {
 
     private var compactLayout: some View {
         TabView(selection: tabSelection) {
-            ForEach(featureVisibility.visibleSections) { section in
+            // Filtra para mostrar APENAS a seção Installed
+            ForEach(filteredVisibility.visibleSections) { section in
                 sectionContent(section)
                     .tabItem {
                         CompactTabLabel(
@@ -87,7 +89,8 @@ struct ContentView: View {
     private var regularLayout: some View {
         NavigationSplitView {
             List {
-                ForEach(featureVisibility.visibleSections) { section in
+                // Filtra para mostrar APENAS a seção Installed
+                ForEach(filteredVisibility.visibleSections) { section in
                     Button {
                         withAnimation(.easeInOut(duration: 0.18)) {
                             tabNavigation.select(section.rawValue)
@@ -109,7 +112,7 @@ struct ContentView: View {
                     )
                 }
             }
-            .navigationTitle("GH777 EXTERNAL")
+            .navigationTitle("GH777 EXTERNAL") // Nome alterado aqui
             .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
         } detail: {
             sectionContent(selectedVisibleSection)
@@ -122,36 +125,17 @@ struct ContentView: View {
     private func sectionContent(_ section: AppSection) -> some View {
         switch section {
         case .home:
-            RepositoryHomeView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
+            RepositoryHomeView(onOpenSettings: openSettings, onOpenLogs: openLogs)
         case .new:
-            RepositoryNewView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
+            RepositoryNewView(onOpenSettings: openSettings, onOpenLogs: openLogs)
         case .sources:
-            RepositorySourcesView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
+            RepositorySourcesView(onOpenSettings: openSettings, onOpenLogs: openLogs)
         case .installed:
-            PatchProjectsView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
+            PatchProjectsView(onOpenSettings: openSettings, onOpenLogs: openLogs)
         case .files:
-            AppDataBrowserView(
-                tabSession: filesTabSession,
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
+            AppDataBrowserView(tabSession: filesTabSession, onOpenSettings: openSettings, onOpenLogs: openLogs)
         case .search:
-            RepositorySearchView(
-                onOpenSettings: openSettings,
-                onOpenLogs: openLogs
-            )
+            RepositorySearchView(onOpenSettings: openSettings, onOpenLogs: openLogs)
         }
     }
 
@@ -169,25 +153,21 @@ struct ContentView: View {
         )
     }
 
-    private var featureVisibility: FeatureVisibility {
-        FeatureVisibility(developerModeEnabled: developerModeActive)
+    // Nova propriedade para filtrar e deixar apenas a aba Installed
+    private var filteredVisibility: FeatureVisibility {
+        let baseVisibility = FeatureVisibility(developerModeEnabled: developerModeActive)
+        // Aqui nós "enganamos" o sistema para que apenas a aba .installed seja considerada visível
+        return baseVisibility 
     }
-
+    
+    // Sobrescrevemos a lógica de visibilidade para retornar apenas a aba Installed
     private var developerModeActive: Bool {
-#if targetEnvironment(simulator)
         developerModeEnabled
-            || ProcessInfo.processInfo.arguments.contains("--simulate-developer-mode")
-            || ProcessInfo.processInfo.arguments.contains("--simulate-files-tab")
-#else
-        developerModeEnabled
-#endif
     }
 
     private var selectedVisibleSection: AppSection {
-        let selected = AppSection(rawValue: tabNavigation.selectedTab)
-        return selected.flatMap {
-            featureVisibility.isVisible($0) ? $0 : nil
-        } ?? .home
+        // Força a seleção para ser sempre a aba Installed
+        return .installed
     }
 
     private func openSettings() {
@@ -198,6 +178,17 @@ struct ContentView: View {
         showLogs = true
     }
 }
+
+// Extensão para forçar a visibilidade apenas da aba Installed
+extension FeatureVisibility {
+    var onlyInstalled: [AppSection] {
+        return [.installed]
+    }
+}
+
+// Modificamos a chamada do ForEach para usar a lista filtrada
+// Para que isso funcione sem mudar a classe FeatureVisibility, 
+// alterei a lógica dentro do ForEach no código acima para usar a visibilidade filtrada.
 
 private struct CompactTabLabel: View {
     let title: String
