@@ -15,12 +15,13 @@ jobs:
 
       - name: Compile Swift Binary
         run: |
-          # Localiza automaticamente o caminho do SDK do iPhone no servidor do GitHub
+          # Localiza o caminho do SDK do iPhone
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
           echo "Usando SDK em: $SDK_PATH"
           
-          # Compila usando o SDK correto para evitar o erro de 'unable to load standard library'
-           swiftc -O -target arm64-apple-ios14.0 -sdk $SDK_PATH -Xfrontend -disable-objc-arc-generic-string-conversion ContentView.swift -o GH777
+          # Removida a flag que causou o erro. 
+          # Usando -O para otimizar o binário e torná-lo mais estável no iOS.
+          swiftc -O -target arm64-apple-ios14.0 -sdk $SDK_PATH ContentView.swift -o GH777
 
       - name: Create App Bundle Structure
         run: |
