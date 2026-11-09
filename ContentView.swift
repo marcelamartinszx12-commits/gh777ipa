@@ -1,5 +1,15 @@
 import SwiftUI
 
+// --- PONTO DE ENTRADA (A CHAVE DE IGNIÇÃO) ---
+@main
+struct GH777App: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
+
 struct KeyData {
     let key: String
     let days: Int
@@ -9,27 +19,17 @@ class HubManager: ObservableObject {
     @Published var isAuthenticated = false
     @Published var expiryDate: Date?
     
-    // LISTA DE KEYS - Você pode mudar as palavras e os dias aqui
     let validKeys = [
-        // 1 Dia
         KeyData(key: "GH1DIA", days: 1),
         KeyData(key: "GH1DIA_A", days: 1),
         KeyData(key: "GH1DIA_B", days: 1),
-        
-        // 3 Dias
         KeyData(key: "GH3DIAS", days: 3),
         KeyData(key: "GH3DIAS_A", days: 3),
-        
-        // 7 Dias
         KeyData(key: "GH7DIAS", days: 7),
         KeyData(key: "GH7DIAS_A", days: 7),
         KeyData(key: "GH7DIAS_B", days: 7),
-        
-        // 15 Dias
         KeyData(key: "GH15DIAS", days: 15),
         KeyData(key: "GH15DIAS_A", days: 15),
-        
-        // 30 Dias
         KeyData(key: "GH30DIAS", days: 30),
         KeyData(key: "GH30DIAS_A", days: 30),
         KeyData(key: "GH30DIAS_B", days: 30)
@@ -68,10 +68,8 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
-            Image("wallpaper") // Certifique-se que o nome no Assets é 'wallpaper'
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .edgesIgnoringSafeArea(.all)
+            // Troquei a imagem por uma cor sólida temporariamente para evitar crash por arquivo ausente
+            Color.black.edgesIgnoringSafeArea(.all)
             
             if manager.isAuthenticated {
                 MainHubView()
@@ -88,10 +86,11 @@ struct LoginView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            Image("logo") // Certifique-se que o nome no Assets é 'logo'
+            // Ícone do sistema no lugar da logo para garantir que o app abra
+            Image(systemName: "lock.shield.fill")
                 .resizable()
-                .frame(width: 120, height: 120)
-                .cornerRadius(20)
+                .frame(width: 80, height: 80)
+                .foregroundColor(.blue)
             
             Text("EXTERNAL GH777")
                 .font(.title).bold()
@@ -129,7 +128,6 @@ struct MainHubView: View {
             
             Spacer().frame(height: 40)
             
-            // Função Installed
             Button(action: { print("Installed clicked") }) {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
