@@ -1,146 +1,149 @@
 import SwiftUI
-import FirebaseCore
-import FirebaseFirestore
 
-// MARK: - Modelos de Dados
-enum ContentType: String, Codable, CaseIterable {
-    case patch = "Patch", wallpaper = "Wallpaper", theme = "Dialer Theme", feature = "3105 Feature"
+struct KeyData {
+    let key: String
+    let days: Int
 }
 
-struct InstalledItem: Identifiable, Codable {
-    var id = UUID()
-    var name: String
-    var type: ContentType
-    var icon: String
-    var isUpdated: Bool = false
-    var bundleId: String?
-}
-
-// MARK: - Gerenciador de Hub
 class HubManager: ObservableObject {
-    @Published var installedItems: [InstalledItem] = [
-        InstalledItem(name: "System Optimizer", type: .patch, icon: "cpu", bundleId: "com.apple.mobile.MobileHouseArrest"),
-        InstalledItem(name: "Neon Night", type: .wallpaper, icon: "image"),
-        InstalledItem(name: "Modern Dialer", type: .theme, icon: "phone"),
-        InstalledItem(name: "Advanced Cleaner", type: .feature, icon: "trash")
+    @Published var isAuthenticated = false
+    @Published var expiryDate: Date?
+    
+    // LISTA DE KEYS - Você pode mudar as palavras e os dias aqui
+    let validKeys = [
+        // 1 Dia
+        KeyData(key: "GH1DIA", days: 1),
+        KeyData(key: "GH1DIA_A", days: 1),
+        KeyData(key: "GH1DIA_B", days: 1),
+        
+        // 3 Dias
+        KeyData(key: "GH3DIAS", days: 3),
+        KeyData(key: "GH3DIAS_A", days: 3),
+        
+        // 7 Dias
+        KeyData(key: "GH7DIAS", days: 7),
+        KeyData(key: "GH7DIAS_A", days: 7),
+        KeyData(key: "GH7DIAS_B", days: 7),
+        
+        // 15 Dias
+        KeyData(key: "GH15DIAS", days: 15),
+        KeyData(key: "GH15DIAS_A", days: 15),
+        
+        // 30 Dias
+        KeyData(key: "GH30DIAS", days: 30),
+        KeyData(key: "GH30DIAS_A", days: 30),
+        KeyData(key: "GH30DIAS_B", days: 30)
     ]
     
-    func applyPatch(item: InstalledItem) {
-        print("Aplicando patch \(item.name)")
+    init() {
+        checkSubscription()
     }
-}
-
-// MARK: - Tela de Login com Trava de Dispositivo
-struct LoginView: View {
-    @State private var key = ""
-    @State private var isAuthenticated = false
-    @State private var errorMessage = ""
-    let deviceID = UIDevice.current.identifierForVendor?.uuidString ?? "unknown_device"
-
-    var body: some View {
-        if isAuthenticated {
-            ThreeOneOSFiveView()
-        } else {
-            VStack(spacing: 30) {
-                Image("app_logo") 
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 250, height: 250)
-                    .cornerRadius(20)
-                    .shadow(radius: 10)
-                
-                Text("EXTERNAL GH777")
-                    .font(.title).bold().foregroundColor(.white)
-                
-                TextField("Insira sua Key", text: $key)
-                    .textFieldStyle(.roundedBorder)
-                    .padding(.horizontal, 40)
-                    .autocapitalization(.none)
-                
-                if !errorMessage.isEmpty {
-                    Text(errorMessage).foregroundColor(.red).font(.caption)
-                }
-                
-                Button(action: validateKey) {
-                    Text("Login").bold().foregroundColor(.white)
-                        .frame(maxWidth: .infinity).padding()
-                        .background(Color.blue).cornerRadius(10)
-                }
-                .padding(.horizontal, 40)
-            }
-            .padding().frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black.edgesIgnoringSafeArea(.all))
-        }
-    }
-
-    func validateKey() {
-        let db = Firestore.firestore()
-        
-        // Busca a key no Firebase
-        db.collection("keys").document(key).getDocument { (document, error) in
-            if let document = document, document.exists {
-                let data = document.data()
-                let registeredDevice = data?["device_id"] as? String
-                
-                if registeredDevice == nil {
-                    // Key nova: Vincula ao dispositivo atual
-                    db.collection("keys").document(key).updateData(["device_id": deviceID]) { _ in
-                        isAuthenticated = true
-                    }
-                } else if registeredDevice == deviceID {
-                    // Key já pertence a este dispositivo
-                    isAuthenticated = true
-                } else {
-                    errorMessage = "Esta key já está vinculada a outro dispositivo."
-                }
+    
+    func checkSubscription() {
+        if let savedDate = UserDefaults.standard.object(forKey: "expiryDate") as? Date {
+            if savedDate > Date() {
+                self.isAuthenticated = true
+                self.expiryDate = savedDate
             } else {
-                errorMessage = "Key inválida."
+                self.isAuthenticated = false
+            }
+        }
+    }
+    
+    func login(keyInput: String) {
+        if let keyInfo = validKeys.first(where: { $0.key == keyInput }) {
+            let calendar = Calendar.current
+            if let futureDate = calendar.date(byAdding: .day, value: keyInfo.days, to: Date()) {
+                UserDefaults.standard.set(futureDate, forKey: "expiryDate")
+                self.expiryDate = futureDate
+                self.isAuthenticated = true
             }
         }
     }
 }
 
-// MARK: - Tela Principal
-struct ThreeOneOSFiveView: View {
+struct ContentView: View {
     @StateObject var manager = HubManager()
+    @State private var keyText = ""
+    
     var body: some View {
         ZStack {
-            Image("wallpaper_bg")
+            Image("wallpaper") // Certifique-se que o nome no Assets é 'wallpaper'
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-                .ignoresSafeArea()
-
-            NavigationView {
-                List {
-                    Section(header: Text("All Content").foregroundColor(.white)) {
-                        ForEach(manager.installedItems) { item in
-                            HStack {
-                                Image(systemName: item.icon).foregroundColor(.blue).frame(width: 30)
-                                VStack(alignment: .leading) {
-                                    Text(item.name).font(.headline).foregroundColor(.primary)
-                                    Text(item.type.rawValue).font(.caption).foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                Button("Apply") { manager.applyPatch(item: item) }
-                                    .padding(6).background(Color.blue.opacity(0.2)).cornerRadius(8)
-                            }
-                            .listRowBackground(Color.white.opacity(0.7))
-                        }
-                    }
-                }
-                .navigationTitle("EXTERNAL GH777")
+                .edgesIgnoringSafeArea(.all)
+            
+            if manager.isAuthenticated {
+                MainHubView()
+            } else {
+                LoginView(manager: manager, keyText: $keyText)
             }
-            .background(Color.black.opacity(0.3))
         }
     }
 }
 
-@main
-struct GH777App: App {
-    init() {
-        FirebaseApp.configure() // Inicializa o Firebase
+struct LoginView: View {
+    @ObservedObject var manager: HubManager
+    @Binding var keyText: String
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Image("logo") // Certifique-se que o nome no Assets é 'logo'
+                .resizable()
+                .frame(width: 120, height: 120)
+                .cornerRadius(20)
+            
+            Text("EXTERNAL GH777")
+                .font(.title).bold()
+                .foregroundColor(.white)
+            
+            TextField("Digite sua Key", text: $keyText)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .multilineTextAlignment(.center)
+                .padding()
+            
+            Button(action: {
+                manager.login(keyInput: keyText)
+            }) {
+                Text("Acessar")
+                    .bold()
+                    .foregroundColor(.white)
+                    .frame(width: 200, height: 50)
+                    .background(Color.blue)
+                    .cornerRadius(10)
+            }
+        }
+        .padding()
+        .background(Color.black.opacity(0.6))
+        .cornerRadius(30)
+        .padding(30)
     }
-    var body: some Scene {
-        WindowGroup { LoginView() }
+}
+
+struct MainHubView: View {
+    var body: some View {
+        VStack {
+            Text("Bem-vindo ao GH777")
+                .font(.largeTitle).bold()
+                .foregroundColor(.white)
+            
+            Spacer().frame(height: 40)
+            
+            // Função Installed
+            Button(action: { print("Installed clicked") }) {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("Installed")
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(width: 250, height: 60)
+                .background(Color.green)
+                .cornerRadius(15)
+            }
+            
+            Spacer()
+        }
+        .padding()
     }
 }
