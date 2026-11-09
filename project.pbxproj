@@ -1,0 +1,69 @@
+// This file is a basic project structure generated for GitHub Actions build.
+projectVersion = 1;
+beginGlobalProjectSettings
+	UseCustomSwiftSettings = NO;
+	UseCustomSwiftSettingsSwiftVersion = 5.0;
+endGlobalProjectSettings
+objects = {
+	className = PBXProject;
+	objectVersion = 56;
+	fileReferenceTypes = {
+		embedded = "embedded";
+	};
+	buildConfigurations = {
+		// Configurações de Build
+	};
+	buildProducts = {
+		development = {
+			buildProducts = (
+				{
+					buildProduct = {
+						isa = PBXTargetProduct;
+						productName = GH777;
+						productType = "Application";
+					};
+				},
+			);
+		};
+	};
+	sources = {
+		// Referências aos arquivos de código
+	};
+	targets = {
+		GH777 = {
+			buildConfigurationList = {
+				isa = PBXBuildConfigurationList;
+				buildConfigurations = (
+					{
+						buildConfiguration = {
+							isa = PBXBuildConfiguration;
+							buildSettings = {
+								PRODUCT_BUNDLE_IDENTIFIER = "com.gh777.app";
+								PRODUCT_NAME = "GH777";
+								SWIFT_VERSION = "5.0";
+								TARGETED_DEVICE_FAMILY = "1";
+							};
+						};
+					},
+				);
+			};
+			buildPhaseList = {
+				isa = PBXBuildPhase;
+				buildPhases = (
+					{
+						isa = PBXBuildPhase;
+						buildAction = "Sources";
+						files = (
+							{
+								fileRef = "ContentView.swift";
+							},
+						);
+					},
+				);
+			};
+			projectName = "GH777";
+			productName = "GH777";
+			productType = "Application";
+		};
+	};
+};
