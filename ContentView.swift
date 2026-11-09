@@ -1,158 +1,243 @@
 import SwiftUI
+import UIKit
 
-// MARK: - Modelos de Dados
-struct KeyData {
-    let key: String
-    let days: Int
-}
-
-// MARK: - Gerenciador de Chaves (Mantendo a função original)
-class HubManager: ObservableObject {
-    @Published var isInstalled: Bool = false
-    @Published var expirationDate: Date?
-    
-    private let keys = [
-        "GH1DIA": 1, "GH1DIA_A": 1, "GH1DIA_B": 1,
-        "GH3DIAS": 3, "GH3DIAS_A": 3,
-        "GH7DIAS": 7, "GH7DIAS_A": 7, "GH7DIAS_B": 7,
-        "GH15DIAS": 15, "GH15DIAS_A": 15,
-        "GH30DIAS": 30, "GH30DIAS_A": 30, "GH30DIAS_B": 30
-    ]
-    
-    init() {
-        checkStatus()
-    }
-    
-    func checkStatus() {
-        if let date = UserDefaults.standard.object(forKey: "exp_date") as? Date {
-            if date > Date() {
-                self.isInstalled = true
-                self.expirationDate = date
-            } else {
-                self.isInstalled = false
-            }
-        }
-    }
-    
-    func validateKey(_ inputKey: String) {
-        if let days = keys[inputKey] {
-            let calendar = Calendar.current
-            let date = calendar.date(byAdding: .day, value: days, to: Date())
-            UserDefaults.standard.set(date, forKey: "exp_date")
-            self.isInstalled = true
-            self.expirationDate = date
-        } else {
-            self.isInstalled = false
-        }
-    }
-}
-
-// MARK: - Componente de Bolha de Mensagem
-struct ChatBubble: View {
-    let text: String
-    let isUser: Bool
-    
-    var body: some View {
-        HStack {
-            if isUser { Spacer() }
-            
-            Text(text)
-                .padding(12)
-                .background(isUser ? Color.green : Color(white: 0.2))
-                .foregroundColor(.white)
-                .cornerRadius(15)
-                .padding(.horizontal, 10)
-            
-            if !isUser { Spacer() }
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-// MARK: - Interface Principal (Nova UI de Chat)
 struct ContentView: View {
-    @StateObject var hub = HubManager()
-    @State private var keyInput: String = ""
-    
+    @Environment(\.appLanguage) private var language
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @EnvironmentObject private var patchDraftCoordinator: PatchDraftCoordinator
+    @EnvironmentObject private var patchStore: PatchProjectStore
+    @EnvironmentObject private var repositoryStore: PackageRepositoryStore
+    @AppStorage(FeatureVisibility.developerModeStorageKey)
+    private var developerModeEnabled = false
+    @State private var tabNavigation: AppTabNavigationState
+    @State private var showSettings = false
+    @State private var showLogs = false
+
+    init() {
+#if targetEnvironment(simulator)
+        let arguments = ProcessInfo.processInfo.arguments
+        let initialTab: Int
+        if arguments.contains("--simulate-new-tab") {
+            initialTab = 1
+        } else if arguments.contains("--simulate-sources-tab") {
+            initialTab = 2
+        } else if arguments.contains("--simulate-installed-tab")
+                    || arguments.contains("--simulate-patch-tab")
+                    || arguments.contains("--simulate-wallpaper-tab") {
+            initialTab = 3
+        } else if arguments.contains("--simulate-files-tab") {
+            initialTab = 4
+        } else if arguments.contains("--simulate-search-tab") {
+            initialTab = 5
+        } else {
+            initialTab = 0
+        }
+        _tabNavigation = State(initialValue: AppTabNavigationState(selectedTab: initialTab))
+        _showSettings = State(
+            initialValue: arguments.contains("--simulate-settings")
+        )
+#else
+        _tabNavigation = State(initialValue: AppTabNavigationState())
+#endif
+    }
+
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Header de Status (Substitui o botão central)
-                HStack {
-                    Text("GH777")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                    Spacer()
-                    if hub.isInstalled {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                            Text("Installed")
-                        }
-                        .font(.caption)
-                        .foregroundColor(.green)
-                        .padding(6)
-                        .background(Color.green.opacity(0.2))
-                        .cornerRadius(8)
+        Group {
+            if horizontalSizeClass == .regular {
+                regularLayout
+            } else {
+                compactLayout
+            }
+        }
+        .tint(AppTheme.accent)
+        .imageScale(.small)
+        .onChange(of: patchDraftCoordinator.request?.id) { requestID in
+            if requestID != nil { tabNavigation.select(AppSection.installed.rawValue) }
+        }
+        .onChange(of: patchDraftCoordinator.importRequest?.id) { requestID in
+            if requestID != nil { tabNavigation.select(AppSection.installed.rawValue) }
+        }
+        .onChange(of: developerModeEnabled) { _ in
+            tabNavigation.reconcileSelection(with: featureVisibility)
+        }
+        .onAppear {
+            tabNavigation.reconcileSelection(with: featureVisibility)
+        }
+        .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showLogs) { LogView() }
+        .patchStorePresentation(patchStore)
+        .repositoryStorePresentation(repositoryStore, patchStore: patchStore)
+    }
+
+    private var compactLayout: some View {
+        TabView(selection: tabSelection) {
+            ForEach(featureVisibility.visibleSections) { section in
+                sectionContent(section)
+                    .tabItem {
+                        CompactTabLabel(
+                            title: language.text(section.titleKey),
+                            systemImage: section.systemImage
+                        )
                     }
-                }
-                .padding()
-                .background(Color(white: 0.1))
-                
-                // Área de Mensagens
-                ScrollView {
-                    VStack(spacing: 15) {
-                        ChatBubble(text: "Bem-vindo ao GH777. Por favor, insira sua chave de acesso para continuar.", isUser: false)
-                        
-                        if hub.isInstalled {
-                            ChatBubble(text: "Acesso concedido! O sistema está instalado e operacional.", isUser: false)
-                        }
-                    }
-                    .padding()
-                }
-                
-                // Campo de Entrada (Composer)
-                VStack {
-                    if !hub.isInstalled {
-                        HStack {
-                            TextField("Digite sua Key aqui...", text: $keyInput)
-                                .padding(12)
-                                .background(Color(white: 0.2))
-                                .foregroundColor(.white)
-                                .cornerRadius(10)
-                                .textFieldStyle(PlainTextFieldStyle())
-                            
-                            Button(action: {
-                                hub.validateKey(keyInput)
-                            }) {
-                                Image(systemName: "paperplane.fill")
-                                    .padding(12)
-                                    .background(Color.green)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(10)
-                            }
-                        }
-                        .padding()
-                        .background(Color(white: 0.1))
-                    } else {
-                        // Quando instalado, mostra apenas um rodapé decorativo
-                        Text("EXTERNAL GH777")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                            .padding()
-                    }
-                }
+                    .tag(section.rawValue)
             }
         }
     }
+
+    private var regularLayout: some View {
+        NavigationSplitView {
+            List {
+                ForEach(featureVisibility.visibleSections) { section in
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            tabNavigation.select(section.rawValue)
+                        }
+                    } label: {
+                        Label(language.text(section.titleKey), systemImage: section.systemImage)
+                            .fontWeight(section.rawValue == tabNavigation.selectedTab ? .semibold : .regular)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .listRowBackground(
+                        section.rawValue == tabNavigation.selectedTab
+                            ? AppTheme.accent.opacity(0.14)
+                            : Color.clear
+                    )
+                    .accessibilityAddTraits(
+                        section.rawValue == tabNavigation.selectedTab ? .isSelected : []
+                    )
+                }
+            }
+            .navigationTitle("GH777 EXTERNAL")
+            .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
+        } detail: {
+            sectionContent(selectedVisibleSection)
+                .id(selectedVisibleSection.rawValue)
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
+
+    @ViewBuilder
+    private func sectionContent(_ section: AppSection) -> some View {
+        switch section {
+        case .home:
+            RepositoryHomeView(
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        case .new:
+            RepositoryNewView(
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        case .sources:
+            RepositorySourcesView(
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        case .installed:
+            PatchProjectsView(
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        case .files:
+            AppDataBrowserView(
+                tabSession: filesTabSession,
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        case .search:
+            RepositorySearchView(
+                onOpenSettings: openSettings,
+                onOpenLogs: openLogs
+            )
+        }
+    }
+
+    private var tabSelection: Binding<Int> {
+        Binding(
+            get: { tabNavigation.selectedTab },
+            set: { tabNavigation.select($0) }
+        )
+    }
+
+    private var filesTabSession: Binding<FilesTabSession> {
+        Binding(
+            get: { tabNavigation.filesTabs },
+            set: { tabNavigation.setFilesTabs($0) }
+        )
+    }
+
+    private var featureVisibility: FeatureVisibility {
+        FeatureVisibility(developerModeEnabled: developerModeActive)
+    }
+
+    private var developerModeActive: Bool {
+#if targetEnvironment(simulator)
+        developerModeEnabled
+            || ProcessInfo.processInfo.arguments.contains("--simulate-developer-mode")
+            || ProcessInfo.processInfo.arguments.contains("--simulate-files-tab")
+#else
+        developerModeEnabled
+#endif
+    }
+
+    private var selectedVisibleSection: AppSection {
+        let selected = AppSection(rawValue: tabNavigation.selectedTab)
+        return selected.flatMap {
+            featureVisibility.isVisible($0) ? $0 : nil
+        } ?? .home
+    }
+
+    private func openSettings() {
+        showSettings = true
+    }
+
+    private func openLogs() {
+        showLogs = true
+    }
 }
 
-@main
-struct GH777App: App {
-    var body: some Scene {
-        WindowGroup {
-            ContentView()
+private struct CompactTabLabel: View {
+    let title: String
+    let systemImage: String
+
+    @ViewBuilder
+    var body: some View {
+        if let image = UIImage(
+            systemName: systemImage,
+            withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .medium)
+        )?.withRenderingMode(.alwaysTemplate) {
+            Image(uiImage: image)
+        } else {
+            Image(systemName: systemImage)
+                .font(.system(size: 17, weight: .medium))
+        }
+        Text(title)
+    }
+}
+
+private extension AppSection {
+    var titleKey: String {
+        switch self {
+        case .home: return "tab.home"
+        case .new: return "tab.new"
+        case .sources: return "tab.sources"
+        case .installed: return "tab.installed"
+        case .files: return "tab.files"
+        case .search: return "tab.search"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .home: return "house.fill"
+        case .new: return "clock.fill"
+        case .sources: return "shippingbox.fill"
+        case .installed: return "tray.full.fill"
+        case .files: return "folder.fill"
+        case .search: return "magnifyingglass"
         }
     }
 }
