@@ -1,4 +1,4 @@
-name: Build iOS IPA
+name: Final Build GH777
 
 on:
   push:
@@ -13,35 +13,47 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Create Xcode Project Structure
+      - name: Set up Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '14.3'
+
+      - name: Create Export Options
         run: |
-          mkdir -p GH777/ContentView.swift
-          # Cria um arquivo de exportação básico para evitar erro de assinatura
           echo '<?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>method</key>
             <string>ad-hoc</string>
+            <key>signingStyle</key>
+            <string>Manual</string>
           </dict>
           </plist>' > export_options.plist
 
-      - name: Build App
+      - name: Build Archive
         run: |
-          # Comando simplificado para compilar arquivos soltos em um binário
-          swiftc -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-            -target arm64-apple-ios14.0 \
-            ContentView.swift \
-            -o GH777.app/GH777
+          # Usa o projeto pbxproj para compilar oficialmente
+          xcodebuild archive \
+            -project project.pbxproj \
+            -scheme GH777 \
+            -archivePath GH777.xcarchive \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            SKIP_INSTALL=NO \
+            CODE_SIGNING_ALLOWED=NO
 
-      - name: Package IPA
+      - name: Export IPA
         run: |
-          mkdir -p Payload
-          mv GH777.app Payload/
-          zip -r GH777.ipa Payload
+          # Exporta o binário final para o formato .ipa
+          xcodebuild -exportArchive \
+            -archivePath GH777.xcarchive \
+            -exportPath . \
+            -exportOptionsPlist export_options.plist \
+            CODE_SIGNING_ALLOWED=NO
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: GH777-App
+          name: GH777-Final-App
           path: GH777.ipa
