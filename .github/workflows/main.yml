@@ -15,16 +15,18 @@ jobs:
 
       - name: Compile Swift Binary
         run: |
-          # Forçando a arquitetura arm64 para ser compatível com iPhones modernos
-          # Adicionado flag de otimização e linkage para evitar que o binário seja "simples demais"
-          swiftc -O -target arm64-apple-ios14.0 ContentView.swift -o GH777
+          # Localiza automaticamente o caminho do SDK do iPhone no servidor do GitHub
+          SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
+          echo "Usando SDK em: $SDK_PATH"
+          
+          # Compila usando o SDK correto para evitar o erro de 'unable to load standard library'
+          swiftc -O -target arm64-apple-ios14.0 -sdk $SDK_PATH ContentView.swift -o GH777
 
       - name: Create App Bundle Structure
         run: |
           mkdir -p Payload/GH777.app
           mv GH777 Payload/GH777.app/
           
-          # Info.plist mais robusto para evitar detecção de "app vazio"
           cat <<EOF > Payload/GH777.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
