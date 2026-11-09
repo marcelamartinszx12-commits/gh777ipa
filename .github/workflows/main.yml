@@ -15,8 +15,8 @@ jobs:
 
       - name: Compile Swift Binary
         run: |
-          # Compila o código Swift para gerar o binário executável
-          swiftc -O main.swift -o GH777
+          # Agora usando o nome correto do seu arquivo: ContentView.swift
+          swiftc -O ContentView.swift -o GH777
 
       - name: Create App Bundle Structure
         run: |
@@ -56,7 +56,7 @@ jobs:
           </plist>
           EOF
           
-          # Cria o arquivo PkgInfo (necessário para apps profissionais)
+          # Cria o arquivo PkgInfo
           echo "APPL" > Payload/GH777.app/PkgInfo
           
           # Garante que o binário tenha permissão de execução
