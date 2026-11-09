@@ -71,7 +71,7 @@ struct ContentView: View {
     }
 
     private var compactLayout: some View {
-        TabView(selection: tabSelection) {
+            TabView(selection: tabSelection) {
             // Modificado: Filtra para mostrar apenas a aba// Modificado: Filtra para mostrar apenas a aba Installed
             ForEach([AppSection.installed], id: \.self) { section in
                 sectionContent(section)
