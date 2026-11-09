@@ -14,7 +14,6 @@ jobs:
 
       - name: Build Binary
         run: |
-          # Compila o código como um executável de iOS
           swiftc -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
             -target arm64-apple-ios14.0 \
             -framework SwiftUI \
@@ -26,7 +25,8 @@ jobs:
         run: |
           mkdir -p GH777.app
           cp GH777_binary GH777.app/GH777
-          # Cria um Info.plist básico para o iOS não rejeitar o app
+          # FORÇANDO PERMISSÃO DE EXECUÇÃO
+          chmod +x GH777.app/GH777
           echo '<plist version="1.0"><dict><key>CFBundleExecutable</key><string>GH777</string><key>CFBundleIdentifier</key><string>com.gh777.app</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>' > GH777.app/Info.plist
 
       - name: Package IPA
