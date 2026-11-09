@@ -20,7 +20,7 @@ jobs:
           echo "Usando SDK em: $SDK_PATH"
           
           # Compila usando o SDK correto para evitar o erro de 'unable to load standard library'
-          swiftc -O -target arm64-apple-ios14.0 -sdk $SDK_PATH ContentView.swift -o GH777
+           swiftc -O -target arm64-apple-ios14.0 -sdk $SDK_PATH -Xfrontend -disable-objc-arc-generic-string-conversion ContentView.swift -o GH777
 
       - name: Create App Bundle Structure
         run: |
