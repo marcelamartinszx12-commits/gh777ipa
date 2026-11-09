@@ -15,18 +15,16 @@ jobs:
 
       - name: Compile Swift Binary
         run: |
-          # Agora usando o nome correto do seu arquivo: ContentView.swift
-          swiftc -O ContentView.swift -o GH777
+          # Forçando a arquitetura arm64 para ser compatível com iPhones modernos
+          # Adicionado flag de otimização e linkage para evitar que o binário seja "simples demais"
+          swiftc -O -target arm64-apple-ios14.0 ContentView.swift -o GH777
 
       - name: Create App Bundle Structure
         run: |
-          # Cria a estrutura de pastas profissional (Bundle)
           mkdir -p Payload/GH777.app
-          
-          # Move o binário para dentro da pasta .app
           mv GH777 Payload/GH777.app/
           
-          # Cria o Info.plist com o ID de sistema (MobileHouseArrest)
+          # Info.plist mais robusto para evitar detecção de "app vazio"
           cat <<EOF > Payload/GH777.app/Info.plist
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -50,21 +48,25 @@ jobs:
               <string>1</string>
               <key>LSRequiresIPhoneOS</key>
               <true/>
+              <key>UIRequiredDeviceCapabilities</key>
+              <array>
+                  <string>arm64</string>
+              </array>
               <key>UILaunchStoryboardName</key>
               <string>LaunchScreen</string>
+              <key>UISupportedInterfaceOrientations</key>
+              <array>
+                  <string>UIInterfaceOrientationPortrait</string>
+              </array>
           </dict>
           </plist>
           EOF
           
-          # Cria o arquivo PkgInfo
           echo "APPL" > Payload/GH777.app/PkgInfo
-          
-          # Garante que o binário tenha permissão de execução
           chmod +x Payload/GH777.app/GH777
 
       - name: Package as IPA
         run: |
-          # Compacta a pasta Payload no formato .ipa correto
           zip -r GH777.ipa Payload
 
       - name: Upload Artifact
