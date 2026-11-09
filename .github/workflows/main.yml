@@ -25,14 +25,13 @@ jobs:
         run: |
           mkdir -p GH777.app
           cp GH777_binary GH777.app/GH777
-          # FORÇANDO PERMISSÃO DE EXECUÇÃO
           chmod +x GH777.app/GH777
           echo '<plist version="1.0"><dict><key>CFBundleExecutable</key><string>GH777</string><key>CFBundleIdentifier</key><string>com.gh777.app</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>' > GH777.app/Info.plist
 
       - name: Package IPA
         run: |
           mkdir -p Payload
-          mv GH777.app Payload/
+          cp -r GH777.app Payload/
           zip -r GH777.ipa Payload
 
       - name: Upload IPA
