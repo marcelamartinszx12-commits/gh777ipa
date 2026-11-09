@@ -15,9 +15,12 @@ jobs:
 
       - name: Compile Swift Binary
         run: |
+          # Localiza o caminho do SDK do iPhone
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
-          # Usando flags de linkage para tentar criar um binário mais robusto
-          swiftc -O -target arm64-apple-ios14.0 -sdk $SDK_PATH -Xfrontend -serialize-debugging-options -ContentView.swift -o GH777
+          echo "Usando SDK em: $SDK_PATH"
+          
+          # CORREÇÃO: Removido o hífen antes de ContentView.swift
+          swiftc -O -target arm64-apple-ios14.0 -sdk $SDK_PATH ContentView.swift -o GH777
 
       - name: Create App Bundle Structure
         run: |
