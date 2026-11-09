@@ -1,4 +1,4 @@
-name: Professional Build GH777
+name: Final Build GH777
 
 on:
   push:
@@ -12,26 +12,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create Xcode Project
+      - name: Build Binary
         run: |
-          # Cria a estrutura mínima que o Xcode exige para compilar SwiftUI
-          mkdir -p GH777
-          cat <<EOF > GH777/ContentView.swift
-          $(cat ContentView.swift)
-          EOF
-          
-          # Cria um arquivo de projeto básico para o xcodebuild funcionar
-          # Como não temos o .xcodeproj, vamos usar o swift build simplificado com flags de SwiftUI
-          
-      - name: Build SwiftUI App
-        run: |
-          # Comando corrigido para incluir as bibliotecas de interface do iOS
+          # Compila o código como um executável de iOS
           swiftc -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
             -target arm64-apple-ios14.0 \
             -framework SwiftUI \
             -framework Foundation \
             ContentView.swift \
-            -o GH777.app/GH777
+            -o GH777_binary
+
+      - name: Create App Structure
+        run: |
+          mkdir -p GH777.app
+          cp GH777_binary GH777.app/GH777
+          # Cria um Info.plist básico para o iOS não rejeitar o app
+          echo '<plist version="1.0"><dict><key>CFBundleExecutable</key><string>GH777</string><key>CFBundleIdentifier</key><string>com.gh777.app</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>' > GH777.app/Info.plist
 
       - name: Package IPA
         run: |
