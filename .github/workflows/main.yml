@@ -15,12 +15,10 @@ jobs:
 
       - name: Compile Swift Binary
         run: |
-          # Localiza o caminho do SDK do iPhone
           SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
           echo "Usando SDK em: $SDK_PATH"
-          
-          # CORREÇÃO: Removido o hífen antes de ContentView.swift
-          swiftc -O -target arm64-apple-ios14.0 -sdk $SDK_PATH ContentView.swift -o GH777
+          # A flag -parse-as-library abaixo é a que resolve o erro de 'main' attribute
+          swiftc -O -target arm64-apple-ios14.0 -sdk $SDK_PATH -parse-as-library ContentView.swift -o GH777
 
       - name: Create App Bundle Structure
         run: |
